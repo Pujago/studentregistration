@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  studentregistration:
+    image: leogether/studentregistration:v1
+    container_name: student_registration
+    build: .
+    depends_on:
+      - sql-server
+    environment:
+      DBServer: "sql-server"
+    ports:
+      - "8080:80"
+    networks:
+      - studentregistration-network
+  sql-server: 
+    image: mcr.microsoft.com/mssql/server:2017-latest-ubuntu
+    container_name: student_registration_sql
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "P@ssword1"
+      MSSQL_PID: Express
+    ports:
+      - "1433:1433"
+    networks:
+      - studentregistration-network
+    volumes: 
+      - "sql-data:/var/opt/mssql"
+volumes:
+  sql-data:
+networks:
+  studentregistration-network:
+    driver: bridge
