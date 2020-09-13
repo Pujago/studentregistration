@@ -12,6 +12,7 @@ resources:
 variables:
   tag: '$(Build.BuildId)'
 
+# Build stage and deploy stage
 stages:
   - stage: Build
     displayName: Build Image
@@ -22,8 +23,9 @@ stages:
         vmImage: 'ubuntu-latest'
       steps:
 
+      # Docker compose file will build images
       - task: DockerCompose@0
-        displayName: Source Directory- $(Build.SourcesDirectory), Working Directory- $(System.DefaultWorkingDirectory), Staging Directory-$(Build.ArtifactStagingDirectory)
+        displayName: Build images
         inputs:
           containerregistrytype: 'Azure Container Registry'
           azureSubscription: 'azure-service-connection'
@@ -33,7 +35,9 @@ stages:
           additionalImageTags: '$(Build.BuildId)'
           includeLatestTag: true
 
+      # Push images to Azure container Registry
       - task: DockerCompose@0
+        displayName: Push images to azure container registry 
         inputs:          
           containerregistrytype: 'Azure Container Registry'
           azureSubscription: 'azure-service-connection'
@@ -43,30 +47,21 @@ stages:
           additionalImageTags: '$(Build.BuildId)'
           includeLatestTag: true
 
+      # Copy yaml files for kubernetes to Artifacts Staging Directory
       - task: CopyFiles@2
         inputs:
           SourceFolder: '$(System.DefaultWorkingDirectory)/DeploymentK8s'
           Contents: '**/*.yml'
           TargetFolder: '$(Build.ArtifactStagingDirectory)'
 
+      # Publish the files to Artifacts Staging Directory
       - task: PublishBuildArtifacts@1
         inputs:
           PathtoPublish: '$(Build.ArtifactStagingDirectory)'
           ArtifactName: 'manifests'
-          publishLocation: 'Container'
+          publishLocation: 'Container'      
       
-      - task: Bash@3
-        inputs:
-          targetType: 'inline'
-          script: |
-            # Write your commands here
-            echo Default working Directory:-
-            ls $(System.DefaultWorkingDirectory)
-            echo ----------------------
-            echo Staging directory - $(Build.ArtifactStagingDirectory)            
-            ls $(Build.ArtifactStagingDirectory)
-      
-
+  # Deploy stage - Deploy to Kubernetes
   - stage: Deploy
     displayName: Deploy to Kubernetes
     jobs:
@@ -76,6 +71,7 @@ stages:
         vmImage: 'ubuntu-latest'
       steps:
 
+      # Download build artifacts which are 2 yaml files - deployment.yml and mssql-deployment.yml for kubernetes
       - task: DownloadBuildArtifacts@0
         inputs:
           buildType: 'current'
@@ -84,6 +80,7 @@ stages:
           itemPattern: '**/*.yml'
           downloadPath: '$(System.ArtifactsDirectory)'
 
+      # Deploy sql server image container to kubernetes
       - task: Kubernetes@1
         displayName: Deploy sql server image 
         inputs:
@@ -99,6 +96,7 @@ stages:
           azureSubscriptionEndpointForSecrets: 'azure-service-connection'
           azureContainerRegistry: 'studentapplicationimages.azurecr.io'
       
+      # Deploy .net microservice student registration api image container to kubernetes
       - task: Kubernetes@1               
         displayName: Deploy student registration api
         inputs:
